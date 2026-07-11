@@ -1,0 +1,41 @@
+[package]
+name = "grok-codex-bridge"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.96"
+description = "Local, streaming Grok Build adapter for a Codex subscription session"
+license = "MIT"
+repository = "https://github.com/joaquincampo/grok-codex-bridge"
+publish = false
+
+[dependencies]
+async-stream = "0.3"
+axum = { version = "0.8", features = ["json"] }
+base64 = "0.22"
+clap = { version = "4", features = ["derive"] }
+bytes = "1"
+futures-util = "0.3"
+fs2 = "0.4"
+http = "1"
+reqwest = { version = "0.13", default-features = false, features = ["form", "json", "rustls", "http2", "stream"] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+serde_json = "1"
+sha2 = "0.10"
+toml = "0.9"
+tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "process", "rt-multi-thread", "signal", "sync", "time"] }
+tokio-util = "0.7"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[dev-dependencies]
+pretty_assertions = "1"
+tower = { version = "0.5", features = ["util"] }
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+# Keep CI focused on actionable correctness and maintainability diagnostics.
+# Pedantic style preferences are intentionally left to rustfmt and review.

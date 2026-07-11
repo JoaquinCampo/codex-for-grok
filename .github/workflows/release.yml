@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags: ['v[0-9]+.[0-9]+.[0-9]+']
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.96.0
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+      - name: Match tag to crate version
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          cargo_version=$(sed -n 's/^version = "\([^"]*\)"/\1/p' Cargo.toml | head -1)
+          test "$version" = "$cargo_version"
+      - run: cargo test --all-targets --locked --target "${{ matrix.target }}"
+      - run: cargo build --release --locked --target "${{ matrix.target }}"
+      - run: release/archive.sh "$GITHUB_REF_NAME" "${{ matrix.target }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.target }}
+          path: release/dist/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: release/dist
+          merge-multiple: true
+      - uses: anchore/sbom-action/download-syft@v0
+      - run: release/sbom.sh release/dist
+      - name: Create checksums
+        working-directory: release/dist
+        run: shasum -a 256 *.tar.gz *.spdx.json > SHA256SUMS
+      - run: release/verify.sh release/dist
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            release/dist/*.tar.gz
+            release/dist/*.spdx.json
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            release/dist/*.tar.gz
+            release/dist/*.spdx.json
+            release/dist/SHA256SUMS

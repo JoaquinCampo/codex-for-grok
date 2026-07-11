@@ -1,0 +1,8 @@
+/target/
+bridge.log
+bridge.pid
+/run/
+.DS_Store
+*.tmp
+*.bak
+/release/dist/
