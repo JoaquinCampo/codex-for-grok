@@ -236,6 +236,31 @@ fn setup_at(path: PathBuf, mp: PathBuf, dry: bool) -> Result<String, String> {
         blocks: vec![],
         service: None,
     });
+    if manifest.version != 1 || manifest.config != path {
+        return Err("ownership manifest version/config mismatch".into());
+    }
+    for owned in &manifest.blocks {
+        if digest(owned.bytes.as_bytes()) != owned.digest {
+            return Err("ownership manifest block digest mismatch".into());
+        }
+    }
+    let mut relinquished = 0;
+    manifest.blocks.retain(|owned| {
+        let exact = old
+            .windows(owned.bytes.len())
+            .filter(|window| *window == owned.bytes.as_bytes())
+            .count();
+        let semantically_intact = exact == 0
+            && models
+                .and_then(|entries| entries.get(&owned.name))
+                .is_some_and(|value| validate_model(&owned.name, value).is_ok());
+        if semantically_intact {
+            relinquished += 1;
+            false
+        } else {
+            true
+        }
+    });
     verify_manifest(&manifest, &path, &old)?;
     let mut add = vec![];
     for (name, model) in [(SOL, "gpt-5.6-sol"), (TERRA, "gpt-5.6-terra")] {
@@ -251,11 +276,22 @@ fn setup_at(path: PathBuf, mp: PathBuf, dry: bool) -> Result<String, String> {
         }
     }
     if add.is_empty() {
-        return Ok("already configured; ownership verified".into());
+        if relinquished == 0 {
+            return Ok("already configured; ownership verified".into());
+        }
+        if dry {
+            return Ok(format!(
+                "dry-run: would preserve and relinquish ownership of {relinquished} semantically intact model block(s)"
+            ));
+        }
+        write_manifest(&mp, &manifest)?;
+        return Ok(format!(
+            "configuration reconciled; preserved {relinquished} model block(s) as user-owned"
+        ));
     }
     if dry {
         return Ok(format!(
-            "dry-run: would append {} model block(s)",
+            "dry-run: would append {} model block(s) and relinquish ownership of {relinquished} existing block(s)",
             add.len()
         ));
     }
@@ -810,6 +846,33 @@ mod tests {
         setup_at(p.clone(), mp.clone(), false).unwrap();
         assert_eq!(fs::read(&p).unwrap(), once);
         assert_eq!(fs::read(&mp).unwrap(), manifest_once);
+    }
+
+    #[test]
+    fn setup_reconciles_semantically_intact_blocks_after_markers_are_stripped() {
+        let d = temp();
+        let p = d.join("config.toml");
+        let mp = d.join("ownership.json");
+        setup_at(p.clone(), mp.clone(), false).unwrap();
+        let mut manifest = load_manifest(&mp).unwrap().unwrap();
+        manifest.service = Some(OwnedFile {
+            path: d.join("service"),
+            digest: "preserved".into(),
+        });
+        write_manifest(&mp, &manifest).unwrap();
+        let plain = b"[models.codex-sol]\nname = \"codex-sol\"\nmodel = \"gpt-5.6-sol\"\nbase_url = \"http://127.0.0.1:18474/v1\"\napi_key = \"local\"\n\n[models.codex-terra]\nname = \"codex-terra\"\nmodel = \"gpt-5.6-terra\"\nbase_url = \"http://127.0.0.1:18474/v1\"\napi_key = \"local\"\n";
+        fs::write(&p, plain).unwrap();
+
+        let dry = setup_at(p.clone(), mp.clone(), true).unwrap();
+        assert!(dry.contains("relinquish ownership of 2"));
+        assert_eq!(load_manifest(&mp).unwrap().unwrap().blocks.len(), 2);
+
+        let result = setup_at(p.clone(), mp.clone(), false).unwrap();
+        assert!(result.contains("preserved 2 model block(s) as user-owned"));
+        assert_eq!(fs::read(&p).unwrap(), plain);
+        let reconciled = load_manifest(&mp).unwrap().unwrap();
+        assert!(reconciled.blocks.is_empty());
+        assert_eq!(reconciled.service.unwrap().digest, "preserved");
     }
 
     #[test]
