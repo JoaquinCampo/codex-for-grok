@@ -13,13 +13,13 @@ version=$1
 root=$(cd "$(dirname "$0")/.." && pwd)
 dist="$root/release/dist"
 sums="$dist/SHA256SUMS"
-template="$root/release/grok-codex-bridge.rb.in"
-out="$dist/grok-codex-bridge.rb"
+template="$root/release/codex-for-grok.rb.in"
+out="$dist/codex-for-grok.rb"
 [[ -f $sums ]] || { echo "missing $sums" >&2; exit 1; }
 
 checksum() {
   local target=$1
-  local file="grok-codex-bridge-$version-$target.tar.gz"
+  local file="codex-for-grok-$version-$target.tar.gz"
   awk -v file="$file" '$2 == file || $2 == "*" file {print $1}' "$sums"
 }
 

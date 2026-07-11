@@ -76,8 +76,8 @@ jobs:
           mkdir -p release/dist
           version=0.0.0
           for target in aarch64-apple-darwin x86_64-apple-darwin aarch64-unknown-linux-gnu x86_64-unknown-linux-gnu; do
-            file="grok-codex-bridge-$version-$target.tar.gz"
+            file="codex-for-grok-$version-$target.tar.gz"
             printf '%064d  %s\n' 0 "$file" >> release/dist/SHA256SUMS
           done
           release/render-homebrew.sh "$version"
-          ruby -c release/dist/grok-codex-bridge.rb
+          ruby -c release/dist/codex-for-grok.rb

@@ -17,10 +17,10 @@ use std::{
 const SOL: &str = "codex-sol";
 const TERRA: &str = "codex-terra";
 const LUNA: &str = "codex-luna";
-const BEGIN: &str = "# BEGIN grok-codex-bridge owned model: ";
-const END: &str = "# END grok-codex-bridge owned model: ";
-const OWNER: &str = "joaquincampo/grok-codex-bridge";
-const LABEL: &str = "com.joaquincampo.grok-codex-bridge";
+const BEGIN: &str = "# BEGIN codex-for-grok owned model: ";
+const END: &str = "# END codex-for-grok owned model: ";
+const OWNER: &str = "JoaquinCampo/codex-for-grok";
+const LABEL: &str = "com.joaquincampo.codex-for-grok";
 
 #[derive(Parser)]
 #[command(version, about, arg_required_else_help = false)]
@@ -133,7 +133,7 @@ fn home() -> Result<PathBuf, String> {
         .ok_or("HOME is not set".into())
 }
 fn state_dir() -> Result<PathBuf, String> {
-    Ok(home()?.join(".grok/codex-bridge"))
+    Ok(home()?.join(".grok/codex-for-grok"))
 }
 fn manifest_path() -> Result<PathBuf, String> {
     Ok(state_dir()?.join("ownership.json"))
@@ -401,7 +401,7 @@ fn acquire_lock() -> Result<fs::File, String> {
         .read(true)
         .write(true)
         .mode(0o600)
-        .open(d.join("bridge.lock"))
+        .open(d.join("codex-for-grok.lock"))
         .map_err(|e| e.to_string())?;
     f.try_lock_exclusive()
         .map_err(|_| "another bridge process owns the lock".into())
@@ -442,9 +442,9 @@ fn service_definition_for(os: &str, root: &Path, x: &Path) -> Result<(PathBuf, V
         );
         Ok((p, b.into_bytes()))
     } else if os == "linux" {
-        let p = root.join(".config/systemd/user/grok-codex-bridge.service");
+        let p = root.join(".config/systemd/user/codex-for-grok.service");
         let b = format!(
-            "# owner: {OWNER}\n[Unit]\nDescription=Grok Codex Bridge\n[Service]\nExecStart={} run\nRestart=on-failure\n[Install]\nWantedBy=default.target\n",
+            "# owner: {OWNER}\n[Unit]\nDescription=Codex for Grok\n[Service]\nExecStart={} run\nRestart=on-failure\n[Install]\nWantedBy=default.target\n",
             systemd_exec_arg(x)?
         );
         Ok((p, b.into_bytes()))
@@ -551,7 +551,7 @@ fn start_manager(path: &Path) -> Result<(), String> {
         cmd("systemctl", &["--user", "daemon-reload"])?;
         cmd(
             "systemctl",
-            &["--user", "enable", "--now", "grok-codex-bridge.service"],
+            &["--user", "enable", "--now", "codex-for-grok.service"],
         )
     }
 }
@@ -564,7 +564,7 @@ fn manager_restart() -> Result<(), String> {
     } else {
         cmd(
             "systemctl",
-            &["--user", "restart", "grok-codex-bridge.service"],
+            &["--user", "restart", "codex-for-grok.service"],
         )
     }
 }
@@ -577,20 +577,12 @@ fn manager_stop() -> Result<(), String> {
         cmd("launchctl", &["bootout", &target])
     } else {
         if !systemctl_query(
-            &[
-                "--user",
-                "is-active",
-                "--quiet",
-                "grok-codex-bridge.service",
-            ],
+            &["--user", "is-active", "--quiet", "codex-for-grok.service"],
             &[3, 4],
         )? {
             return Ok(());
         }
-        cmd(
-            "systemctl",
-            &["--user", "stop", "grok-codex-bridge.service"],
-        )
+        cmd("systemctl", &["--user", "stop", "codex-for-grok.service"])
     }
 }
 #[derive(Clone, Copy)]
@@ -608,12 +600,7 @@ fn manager_state() -> Result<ManagerState, String> {
         Ok(ManagerState {
             active: manager_is_active()?,
             enabled: systemctl_query(
-                &[
-                    "--user",
-                    "is-enabled",
-                    "--quiet",
-                    "grok-codex-bridge.service",
-                ],
+                &["--user", "is-enabled", "--quiet", "codex-for-grok.service"],
                 &[1],
             )?,
         })
@@ -629,16 +616,10 @@ fn restore_manager_state(state: ManagerState, path: &Path) -> Result<(), String>
     } else {
         reload_service_manager()?;
         if state.enabled {
-            cmd(
-                "systemctl",
-                &["--user", "enable", "grok-codex-bridge.service"],
-            )?;
+            cmd("systemctl", &["--user", "enable", "codex-for-grok.service"])?;
         }
         if state.active {
-            cmd(
-                "systemctl",
-                &["--user", "start", "grok-codex-bridge.service"],
-            )?;
+            cmd("systemctl", &["--user", "start", "codex-for-grok.service"])?;
         }
         Ok(())
     }
@@ -652,17 +633,12 @@ fn stop_disable_if_installed(m: &Manifest) -> Result<(), String> {
     } else {
         manager_stop()?;
         if systemctl_query(
-            &[
-                "--user",
-                "is-enabled",
-                "--quiet",
-                "grok-codex-bridge.service",
-            ],
+            &["--user", "is-enabled", "--quiet", "codex-for-grok.service"],
             &[1],
         )? {
             cmd(
                 "systemctl",
-                &["--user", "disable", "grok-codex-bridge.service"],
+                &["--user", "disable", "codex-for-grok.service"],
             )?;
         }
         Ok(())
@@ -683,12 +659,7 @@ fn manager_is_active() -> Result<bool, String> {
         )
     } else if cfg!(target_os = "linux") {
         systemctl_query(
-            &[
-                "--user",
-                "is-active",
-                "--quiet",
-                "grok-codex-bridge.service",
-            ],
+            &["--user", "is-active", "--quiet", "codex-for-grok.service"],
             &[3, 4],
         )
     } else {
@@ -744,8 +715,8 @@ async fn fetch_identity(path: &str) -> Result<Value, String> {
         .json()
         .await
         .map_err(|e| format!("invalid bridge JSON: {e}"))?;
-    if v.get("service").and_then(Value::as_str) != Some("grok-codex-bridge") {
-        return Err("listener is not grok-codex-bridge".into());
+    if v.get("service").and_then(Value::as_str) != Some("codex-for-grok") {
+        return Err("listener is not codex-for-grok".into());
     }
     Ok(v)
 }
@@ -874,7 +845,7 @@ mod tests {
         assert!(plist_path.ends_with(format!("Library/LaunchAgents/{LABEL}.plist")));
         assert!(String::from_utf8(plist).unwrap().contains(OWNER));
         let (unit_path, unit) = service_definition_for("linux", &d, exe).unwrap();
-        assert!(unit_path.ends_with(".config/systemd/user/grok-codex-bridge.service"));
+        assert!(unit_path.ends_with(".config/systemd/user/codex-for-grok.service"));
         let unit = String::from_utf8(unit).unwrap();
         assert!(unit.contains(OWNER));
         assert!(unit.contains("ExecStart=\"/opt/grok bridge/bin\" run"));

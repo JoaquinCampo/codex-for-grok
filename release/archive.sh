@@ -15,15 +15,15 @@ version=${tag#v}
 }
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-binary="$root/target/$target/release/grok-codex-bridge"
+binary="$root/target/$target/release/codex-for-grok"
 [[ -x $binary ]] || { echo "missing executable: $binary" >&2; exit 1; }
 
 dist="$root/release/dist"
-name="grok-codex-bridge-$version-$target"
+name="codex-for-grok-$version-$target"
 stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 mkdir -p "$dist" "$stage/$name"
-install -m 0755 "$binary" "$stage/$name/grok-codex-bridge"
+install -m 0755 "$binary" "$stage/$name/codex-for-grok"
 install -m 0644 "$root/README.md" "$root/LICENSE" "$root/COMPATIBILITY.md" "$stage/$name/"
 
 tar -C "$stage" -czf "$dist/$name.tar.gz" "$name"

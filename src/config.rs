@@ -23,34 +23,34 @@ pub struct Config {
 
 impl Config {
     pub fn from_env() -> Result<Self, String> {
-        let host = env_value("GROK_CODEX_BRIDGE_HOST", "127.0.0.1")
+        let host = env_value("CODEX_FOR_GROK_HOST", "127.0.0.1")
             .parse::<IpAddr>()
-            .map_err(|error| format!("GROK_CODEX_BRIDGE_HOST must be an IP address: {error}"))?;
+            .map_err(|error| format!("CODEX_FOR_GROK_HOST must be an IP address: {error}"))?;
         if !host.is_loopback() {
-            return Err("GROK_CODEX_BRIDGE_HOST must be a loopback address".to_owned());
+            return Err("CODEX_FOR_GROK_HOST must be a loopback address".to_owned());
         }
 
-        let port = parse_env("GROK_CODEX_BRIDGE_PORT", DEFAULT_PORT)?;
-        let max_body_bytes = parse_env("GROK_CODEX_BRIDGE_MAX_BODY_BYTES", DEFAULT_MAX_BODY_BYTES)?;
-        let max_streams = parse_env("GROK_CODEX_BRIDGE_MAX_STREAMS", DEFAULT_MAX_STREAMS)?;
+        let port = parse_env("CODEX_FOR_GROK_PORT", DEFAULT_PORT)?;
+        let max_body_bytes = parse_env("CODEX_FOR_GROK_MAX_BODY_BYTES", DEFAULT_MAX_BODY_BYTES)?;
+        let max_streams = parse_env("CODEX_FOR_GROK_MAX_STREAMS", DEFAULT_MAX_STREAMS)?;
         if max_body_bytes == 0 || max_streams == 0 {
             return Err("bridge request and stream limits must be greater than zero".to_owned());
         }
 
         let idle_timeout_secs = parse_env(
-            "GROK_CODEX_BRIDGE_UPSTREAM_IDLE_TIMEOUT_SECS",
+            "CODEX_FOR_GROK_UPSTREAM_IDLE_TIMEOUT_SECS",
             DEFAULT_IDLE_TIMEOUT_SECS,
         )?;
         let drain_timeout_secs = parse_env(
-            "GROK_CODEX_BRIDGE_DRAIN_TIMEOUT_SECS",
+            "CODEX_FOR_GROK_DRAIN_TIMEOUT_SECS",
             DEFAULT_DRAIN_TIMEOUT_SECS,
         )?;
 
-        let upstream_url = env_value("GROK_CODEX_BRIDGE_UPSTREAM_URL", CODEX_URL)
+        let upstream_url = env_value("CODEX_FOR_GROK_UPSTREAM_URL", CODEX_URL)
             .parse::<Url>()
-            .map_err(|error| format!("invalid GROK_CODEX_BRIDGE_UPSTREAM_URL: {error}"))?;
+            .map_err(|error| format!("invalid CODEX_FOR_GROK_UPSTREAM_URL: {error}"))?;
         if upstream_url.scheme() != "https" {
-            return Err("GROK_CODEX_BRIDGE_UPSTREAM_URL must use HTTPS".to_owned());
+            return Err("CODEX_FOR_GROK_UPSTREAM_URL must use HTTPS".to_owned());
         }
 
         let auth_path = env::var_os("CODEX_AUTH_PATH")

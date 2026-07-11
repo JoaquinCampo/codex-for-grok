@@ -128,8 +128,8 @@ impl QuotaManager {
             "initialize",
             json!({
                 "clientInfo": {
-                    "name": "grok-codex-bridge",
-                    "title": "Grok Codex Bridge",
+                    "name": "codex-for-grok",
+                    "title": "Codex for Grok",
                     "version": env!("CARGO_PKG_VERSION"),
                 }
             }),
