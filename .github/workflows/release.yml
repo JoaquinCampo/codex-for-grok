@@ -69,7 +69,7 @@ jobs:
         working-directory: release/dist
         run: shasum -a 256 *.tar.gz *.spdx.json > SHA256SUMS
       - run: release/verify.sh release/dist
-      - uses: actions/attest-build-provenance@v2
+      - uses: actions/attest-build-provenance@v4
         with:
           subject-path: |
             release/dist/*.tar.gz
