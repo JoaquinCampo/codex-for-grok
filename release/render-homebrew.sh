@@ -18,7 +18,8 @@ out="$dist/grok-codex-bridge.rb"
 [[ -f $sums ]] || { echo "missing $sums" >&2; exit 1; }
 
 checksum() {
-  local target=$1 file="grok-codex-bridge-$version-$target.tar.gz"
+  local target=$1
+  local file="grok-codex-bridge-$version-$target.tar.gz"
   awk -v file="$file" '$2 == file || $2 == "*" file {print $1}' "$sums"
 }
 
