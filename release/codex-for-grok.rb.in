@@ -1,7 +1,6 @@
 class CodexForGrok < Formula
   desc "Local streaming adapter between Grok Build and a Codex subscription"
   homepage "https://github.com/JoaquinCampo/codex-for-grok"
-  version "@VERSION@"
   license "MIT"
 
   on_macos do
