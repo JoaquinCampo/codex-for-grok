@@ -4,6 +4,12 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-07-11
+
+### Fixed
+
+- Use Grok Build's singular `[model.<alias>]` custom-model schema and migrate exact bridge-owned legacy `[models.<alias>]` blocks transactionally.
+
 ## [0.1.1] - 2026-07-11
 
 ### Fixed
