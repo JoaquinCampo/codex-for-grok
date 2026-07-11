@@ -696,8 +696,8 @@ fn systemctl_query(args: &[&str], benign_false_codes: &[i32]) -> Result<bool, St
 fn command_success(p: &str, a: &[&str]) -> Result<bool, String> {
     Command::new(p)
         .args(a)
-        .status()
-        .map(|s| s.success())
+        .output()
+        .map(|output| output.status.success())
         .map_err(|e| format!("could not run {p}: {e}"))
 }
 async fn fetch_identity(path: &str) -> Result<Value, String> {
