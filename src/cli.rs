@@ -211,8 +211,26 @@ fn verify_manifest(m: &Manifest, path: &Path, bytes: &[u8]) -> Result<(), String
     Ok(())
 }
 fn setup(given: Option<PathBuf>, dry: bool) -> Result<String, String> {
+    require_prerequisite(
+        "grok",
+        "install Grok Build from the official xAI distribution",
+    )?;
+    require_prerequisite("codex", "install the Codex CLI and run `codex login`")?;
     let path = config_path(given)?;
     setup_at(path, manifest_path()?, dry)
+}
+fn executable_on_path(name: &str) -> bool {
+    env::var_os("PATH")
+        .is_some_and(|path| env::split_paths(&path).any(|directory| directory.join(name).is_file()))
+}
+fn require_prerequisite(name: &str, guidance: &str) -> Result<(), String> {
+    if executable_on_path(name) {
+        Ok(())
+    } else {
+        Err(format!(
+            "required `{name}` executable not found on PATH; {guidance}"
+        ))
+    }
 }
 fn setup_at(path: PathBuf, mp: PathBuf, dry: bool) -> Result<String, String> {
     let old = match fs::read(&path) {
@@ -761,6 +779,12 @@ async fn status() -> ExitCode {
 }
 async fn doctor() -> ExitCode {
     let mut failures = vec![];
+    if !executable_on_path("grok") {
+        failures.push("Grok Build executable `grok` is not available on PATH".into());
+    }
+    if !executable_on_path("codex") {
+        failures.push("Codex CLI executable `codex` is not available on PATH".into());
+    }
     let config = config_path(None);
     match (&config, load_manifest(&manifest_path().unwrap_or_default())) {
         (Ok(p), Ok(Some(m))) => match fs::read(p) {

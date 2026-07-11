@@ -20,11 +20,15 @@ codex-for-grok setup
 codex-for-grok doctor
 ```
 
-Before setup, install a current Codex CLI and authenticate:
+Before setup, install Grok Build and a current Codex CLI, then authenticate both products through their official flows. At minimum, these commands must be available on `PATH`:
 
 ```sh
+grok --version
+codex --version
 codex login
 ```
+
+`setup` and `doctor` detect missing prerequisites and stop with actionable guidance. `codex-for-grok` does not silently install or authenticate third-party CLIs.
 
 `setup` is strictly additive. It preserves Grok, Composer, and every existing custom model. It appends only missing `codex-sol` and `codex-terra` entries. Conflicting aliases cause a safe refusal; they are never overwritten. A byte-for-byte backup and ownership manifest support safe recovery and uninstall.
 
