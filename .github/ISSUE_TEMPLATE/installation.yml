@@ -1,0 +1,66 @@
+name: Installation problem
+description: Get help installing codex-for-grok on macOS or Linux
+title: "[Installation]: "
+labels:
+  - installation
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Installation support is limited to macOS and Linux, with Sol and Terra as the supported backends.
+
+        **Never include API tokens, credentials, authentication files, or private/unredacted logs.** Use private vulnerability reporting for security issues.
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: System details
+      description: Include OS version and architecture.
+      placeholder: "For example: macOS 15 arm64 or Ubuntu 24.04 x86_64"
+    validations:
+      required: true
+  - type: dropdown
+    id: method
+    attributes:
+      label: Installation method
+      options:
+        - Homebrew
+        - Prebuilt release artifact
+        - Build from source
+        - Other supported method
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+    validations:
+      required: true
+  - type: textarea
+    id: commands
+    attributes:
+      label: Commands and sanitized output
+      description: Include only the minimal commands and redacted output needed to diagnose the problem. Never paste auth files, tokens, or private logs.
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: attempts
+    attributes:
+      label: Troubleshooting attempted
+      description: What have you already tried?
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Sensitive-data check
+      options:
+        - label: I have not included tokens, credentials, authentication files, or private/unredacted logs.
+          required: true

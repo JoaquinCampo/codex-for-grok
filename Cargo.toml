@@ -1,11 +1,11 @@
 [package]
-name = "grok-codex-bridge"
+name = "codex-for-grok"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.96"
 description = "Local, streaming Grok Build adapter for a Codex subscription session"
 license = "MIT"
-repository = "https://github.com/joaquincampo/grok-codex-bridge"
+repository = "https://github.com/JoaquinCampo/codex-for-grok"
 publish = false
 
 [dependencies]

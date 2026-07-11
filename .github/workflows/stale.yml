@@ -1,0 +1,47 @@
+name: Mark stale issues and pull requests
+
+on:
+  schedule:
+    - cron: "23 7 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: stale
+  cancel-in-progress: false
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v10
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          days-before-issue-stale: 90
+          days-before-issue-close: 30
+          days-before-pr-stale: 60
+          days-before-pr-close: 30
+          stale-issue-label: stale
+          stale-pr-label: stale
+          exempt-issue-labels: pinned,security,good first issue,help wanted
+          exempt-pr-labels: pinned,security
+          stale-issue-message: >-
+            This issue has had no activity for 90 days. Add relevant, sanitized
+            information if it is still actionable. Never post tokens, auth files,
+            or private logs. It will close after 30 more days without activity.
+          close-issue-message: >-
+            Closing after an additional 30 days without activity. Comment with
+            current, sanitized reproduction details if this should be revisited.
+          stale-pr-message: >-
+            This pull request has had no activity for 60 days. Please rebase and
+            confirm tests, Sol/Terra compatibility, and macOS/Linux compatibility.
+            It will close after 30 more days without activity.
+          close-pr-message: >-
+            Closing after an additional 30 days without activity. A refreshed
+            pull request is welcome when the change is ready.
+          remove-stale-when-updated: true
+          operations-per-run: 30

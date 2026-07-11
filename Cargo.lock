@@ -282,6 +282,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "codex-for-grok"
+version = "0.1.0"
+dependencies = [
+ "async-stream",
+ "axum",
+ "base64",
+ "bytes",
+ "clap",
+ "fs2",
+ "futures-util",
+ "http",
+ "pretty_assertions",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror",
+ "tokio",
+ "tokio-util",
+ "toml",
+ "tower",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "colorchoice"
 version = "1.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -522,33 +549,6 @@ dependencies = [
  "r-efi",
  "rand_core",
  "wasm-bindgen",
-]
-
-[[package]]
-name = "grok-codex-bridge"
-version = "0.1.0"
-dependencies = [
- "async-stream",
- "axum",
- "base64",
- "bytes",
- "clap",
- "fs2",
- "futures-util",
- "http",
- "pretty_assertions",
- "reqwest",
- "serde",
- "serde_json",
- "sha2",
- "thiserror",
- "tokio",
- "tokio-util",
- "toml",
- "tower",
- "tracing",
- "tracing-subscriber",
- "uuid",
 ]
 
 [[package]]

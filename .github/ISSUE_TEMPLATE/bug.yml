@@ -1,0 +1,70 @@
+name: Bug report
+description: Report a reproducible defect in codex-for-grok
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. codex-for-grok is an unofficial local Rust bridge and supports only Sol and Terra on macOS and Linux.
+
+        **Never include API tokens, credentials, authentication files, or private/unredacted logs.** Revoke any secret accidentally exposed. Report security vulnerabilities through the private vulnerability reporting link in the issue chooser, not here.
+  - type: dropdown
+    id: backend
+    attributes:
+      label: Backend
+      options:
+        - Sol
+        - Terra
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: codex-for-grok version
+      placeholder: "For example: v0.3.0 or commit SHA"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the observed behavior and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Provide a minimal, reproducible sequence using placeholders for all secrets and private data.
+      placeholder: |
+        1. Configure ... using <REDACTED>
+        2. Run ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics
+      description: Optional. Include only minimal, redacted output. Do not attach tokens, auth files, or private/unredacted logs.
+      render: shell
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Sensitive-data check
+      options:
+        - label: I have not included tokens, credentials, authentication files, or private/unredacted logs.
+          required: true
+        - label: I have checked that this report does not disclose a security vulnerability.
+          required: true

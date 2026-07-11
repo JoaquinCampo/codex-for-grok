@@ -56,7 +56,7 @@ impl AppState {
             .pool_idle_timeout(Duration::from_secs(90))
             .tcp_keepalive(Duration::from_secs(30))
             .http2_adaptive_window(true)
-            .user_agent(format!("grok-codex-bridge/{BRIDGE_VERSION}"))
+            .user_agent(format!("codex-for-grok/{BRIDGE_VERSION}"))
             .build()?;
         let auth = AuthManager::new(config.auth_path.clone(), client.clone());
         let quota = QuotaManager::spawn(Duration::from_secs(60));
@@ -138,7 +138,7 @@ async fn health(ConnectInfo(peer): ConnectInfo<SocketAddr>) -> Response {
     }
     (
         StatusCode::OK,
-        axum::Json(json!({"ok": true, "service": "grok-codex-bridge", "version": BRIDGE_VERSION})),
+        axum::Json(json!({"ok": true, "service": "codex-for-grok", "version": BRIDGE_VERSION})),
     )
         .into_response()
 }
@@ -178,7 +178,7 @@ async fn status(
         return response;
     }
     axum::Json(json!({
-        "service": "grok-codex-bridge",
+        "service": "codex-for-grok",
         "version": BRIDGE_VERSION,
         "bridge": state.metrics.snapshot().await,
         "codex_subscription": state.quota.snapshot().await,
@@ -544,7 +544,7 @@ async fn request_upstream(
         .bearer_auth(&session.access_token)
         .header("chatgpt-account-id", &session.account_id)
         .header("OpenAI-Beta", "responses=experimental")
-        .header("originator", "grok-codex-bridge")
+        .header("originator", "codex-for-grok")
         .header(header::ACCEPT, "text/event-stream");
     request.json(payload).send().await.map_err(|error| {
         if error.is_timeout() {

@@ -18,7 +18,7 @@ for archive in "${archives[@]}"; do
     echo "unsafe archive paths: $archive" >&2
     exit 1
   }
-  count=$(printf '%s\n' "$listing" | grep -c '/grok-codex-bridge$')
+  count=$(printf '%s\n' "$listing" | grep -c '/codex-for-grok$')
   [[ $count -eq 1 ]] || { echo "archive lacks one bridge executable: $archive" >&2; exit 1; }
 done
 

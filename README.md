@@ -1,4 +1,4 @@
-# grok-codex-bridge
+# codex-for-grok
 
 An unofficial local bridge that lets Grok Build use a user's existing ChatGPT/Codex subscription. It exposes a loopback-only OpenAI Responses API, preserves Grok's native streaming/tool behavior, and reports live Codex subscription quota.
 
@@ -14,10 +14,10 @@ Luna is intentionally unsupported because the Codex subscription HTTP endpoint r
 ## Install
 
 ```sh
-brew install joaquincampo/tap/grok-codex-bridge
-grok-codex-bridge setup --dry-run
-grok-codex-bridge setup
-grok-codex-bridge doctor
+brew install joaquincampo/tap/codex-for-grok
+codex-for-grok setup --dry-run
+codex-for-grok setup
+codex-for-grok doctor
 ```
 
 Before setup, install a current Codex CLI and authenticate:
@@ -31,14 +31,14 @@ codex login
 ## Commands
 
 ```text
-grok-codex-bridge run
-grok-codex-bridge setup [--dry-run] [--config PATH]
-grok-codex-bridge doctor
-grok-codex-bridge start
-grok-codex-bridge stop
-grok-codex-bridge restart
-grok-codex-bridge status
-grok-codex-bridge uninstall [--dry-run]
+codex-for-grok run
+codex-for-grok setup [--dry-run] [--config PATH]
+codex-for-grok doctor
+codex-for-grok start
+codex-for-grok stop
+codex-for-grok restart
+codex-for-grok status
+codex-for-grok uninstall [--dry-run]
 ```
 
 - `run` starts the bridge in the foreground.
@@ -65,20 +65,20 @@ curl http://127.0.0.1:18474/v1/models
 
 | Variable | Default | Purpose |
 |---|---:|---|
-| `GROK_CODEX_BRIDGE_HOST` | `127.0.0.1` | Loopback bind address; non-loopback is rejected |
-| `GROK_CODEX_BRIDGE_PORT` | `18474` | Local port |
+| `CODEX_FOR_GROK_HOST` | `127.0.0.1` | Loopback bind address; non-loopback is rejected |
+| `CODEX_FOR_GROK_PORT` | `18474` | Local port |
 | `CODEX_AUTH_PATH` | `~/.codex/auth.json` | Codex authentication file |
-| `GROK_CODEX_BRIDGE_MAX_BODY_BYTES` | `4194304` | Maximum request body |
-| `GROK_CODEX_BRIDGE_MAX_STREAMS` | `16` | Concurrent stream limit |
-| `GROK_CODEX_BRIDGE_UPSTREAM_IDLE_TIMEOUT_SECS` | `180` | Stream idle timeout |
-| `GROK_CODEX_BRIDGE_DRAIN_TIMEOUT_SECS` | `30` | Graceful shutdown deadline |
+| `CODEX_FOR_GROK_MAX_BODY_BYTES` | `4194304` | Maximum request body |
+| `CODEX_FOR_GROK_MAX_STREAMS` | `16` | Concurrent stream limit |
+| `CODEX_FOR_GROK_UPSTREAM_IDLE_TIMEOUT_SECS` | `180` | Stream idle timeout |
+| `CODEX_FOR_GROK_DRAIN_TIMEOUT_SECS` | `30` | Graceful shutdown deadline |
 | `RUST_LOG` | `info` | Foreground service log filter |
 
 ## Build from source
 
 ```sh
 cargo build --release --locked
-./target/release/grok-codex-bridge --help
+./target/release/codex-for-grok --help
 ```
 
 The first release targets macOS ARM64/x86_64 and Linux GNU ARM64/x86_64. Windows and musl are not currently supported.

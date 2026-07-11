@@ -10,5 +10,5 @@ async fn main() -> ExitCode {
         .json()
         .flatten_event(true)
         .init();
-    grok_codex_bridge::cli::entry().await
+    codex_for_grok::cli::entry().await
 }

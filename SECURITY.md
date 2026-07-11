@@ -6,7 +6,7 @@ Security fixes are provided for the latest released version.
 
 ## Reporting a vulnerability
 
-Do not open a public issue for a suspected vulnerability involving credentials, authentication, installer ownership, or local privilege boundaries. Report it privately through GitHub Security Advisories in `joaquincampo/grok-codex-bridge`.
+Do not open a public issue for a suspected vulnerability involving credentials, authentication, installer ownership, or local privilege boundaries. Report it privately through GitHub Security Advisories in `joaquincampo/codex-for-grok`.
 
 Include the affected version, operating system, reproduction steps, impact, and any suggested mitigation. Do not include Codex tokens, refresh tokens, prompts, or private logs.
 

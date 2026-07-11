@@ -23,11 +23,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release download "v${{ inputs.version }}" --pattern SHA256SUMS --dir release/dist
       - run: release/render-homebrew.sh "${{ inputs.version }}"
-      - run: ruby -c release/dist/grok-codex-bridge.rb
+      - run: ruby -c release/dist/codex-for-grok.rb
       - uses: actions/upload-artifact@v4
         with:
-          name: grok-codex-bridge-homebrew-formula-${{ inputs.version }}
-          path: release/dist/grok-codex-bridge.rb
+          name: codex-for-grok-homebrew-formula-${{ inputs.version }}
+          path: release/dist/codex-for-grok.rb
       - name: Open tap pull request
         if: env.TAP_TOKEN != ''
         env:
@@ -36,15 +36,15 @@ jobs:
         run: |
           git clone "https://x-access-token:${GH_TOKEN}@github.com/joaquincampo/homebrew-tap.git" tap
           cd tap
-          branch="grok-codex-bridge-${VERSION}"
+          branch="codex-for-grok-${VERSION}"
           git switch -c "$branch"
           mkdir -p Formula
-          cp ../release/dist/grok-codex-bridge.rb Formula/grok-codex-bridge.rb
+          cp ../release/dist/codex-for-grok.rb Formula/codex-for-grok.rb
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add Formula/grok-codex-bridge.rb
-          git commit -m "grok-codex-bridge ${VERSION}"
+          git add Formula/codex-for-grok.rb
+          git commit -m "codex-for-grok ${VERSION}"
           git push origin "$branch"
           gh pr create --repo joaquincampo/homebrew-tap --head "$branch" --base main \
-            --title "grok-codex-bridge ${VERSION}" \
+            --title "codex-for-grok ${VERSION}" \
             --body "Updates the formula from the checksummed upstream release artifacts."
