@@ -4,6 +4,14 @@ All notable changes are documented here. This project follows Semantic Versionin
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-11
+
+### Fixed
+
+- Suppress expected `launchctl print` diagnostics when checking whether the macOS user service is already loaded.
+
+## [0.1.0] - 2026-07-11
+
 ### Added
 
 - Local streaming Responses API bridge for Codex Sol and Terra.

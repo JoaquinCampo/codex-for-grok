@@ -211,8 +211,26 @@ fn verify_manifest(m: &Manifest, path: &Path, bytes: &[u8]) -> Result<(), String
     Ok(())
 }
 fn setup(given: Option<PathBuf>, dry: bool) -> Result<String, String> {
+    require_prerequisite(
+        "grok",
+        "install Grok Build from the official xAI distribution",
+    )?;
+    require_prerequisite("codex", "install the Codex CLI and run `codex login`")?;
     let path = config_path(given)?;
     setup_at(path, manifest_path()?, dry)
+}
+fn executable_on_path(name: &str) -> bool {
+    env::var_os("PATH")
+        .is_some_and(|path| env::split_paths(&path).any(|directory| directory.join(name).is_file()))
+}
+fn require_prerequisite(name: &str, guidance: &str) -> Result<(), String> {
+    if executable_on_path(name) {
+        Ok(())
+    } else {
+        Err(format!(
+            "required `{name}` executable not found on PATH; {guidance}"
+        ))
+    }
 }
 fn setup_at(path: PathBuf, mp: PathBuf, dry: bool) -> Result<String, String> {
     let old = match fs::read(&path) {
@@ -236,6 +254,31 @@ fn setup_at(path: PathBuf, mp: PathBuf, dry: bool) -> Result<String, String> {
         blocks: vec![],
         service: None,
     });
+    if manifest.version != 1 || manifest.config != path {
+        return Err("ownership manifest version/config mismatch".into());
+    }
+    for owned in &manifest.blocks {
+        if digest(owned.bytes.as_bytes()) != owned.digest {
+            return Err("ownership manifest block digest mismatch".into());
+        }
+    }
+    let mut relinquished = 0;
+    manifest.blocks.retain(|owned| {
+        let exact = old
+            .windows(owned.bytes.len())
+            .filter(|window| *window == owned.bytes.as_bytes())
+            .count();
+        let semantically_intact = exact == 0
+            && models
+                .and_then(|entries| entries.get(&owned.name))
+                .is_some_and(|value| validate_model(&owned.name, value).is_ok());
+        if semantically_intact {
+            relinquished += 1;
+            false
+        } else {
+            true
+        }
+    });
     verify_manifest(&manifest, &path, &old)?;
     let mut add = vec![];
     for (name, model) in [(SOL, "gpt-5.6-sol"), (TERRA, "gpt-5.6-terra")] {
@@ -251,11 +294,22 @@ fn setup_at(path: PathBuf, mp: PathBuf, dry: bool) -> Result<String, String> {
         }
     }
     if add.is_empty() {
-        return Ok("already configured; ownership verified".into());
+        if relinquished == 0 {
+            return Ok("already configured; ownership verified".into());
+        }
+        if dry {
+            return Ok(format!(
+                "dry-run: would preserve and relinquish ownership of {relinquished} semantically intact model block(s)"
+            ));
+        }
+        write_manifest(&mp, &manifest)?;
+        return Ok(format!(
+            "configuration reconciled; preserved {relinquished} model block(s) as user-owned"
+        ));
     }
     if dry {
         return Ok(format!(
-            "dry-run: would append {} model block(s)",
+            "dry-run: would append {} model block(s) and relinquish ownership of {relinquished} existing block(s)",
             add.len()
         ));
     }
@@ -696,8 +750,8 @@ fn systemctl_query(args: &[&str], benign_false_codes: &[i32]) -> Result<bool, St
 fn command_success(p: &str, a: &[&str]) -> Result<bool, String> {
     Command::new(p)
         .args(a)
-        .status()
-        .map(|s| s.success())
+        .output()
+        .map(|output| output.status.success())
         .map_err(|e| format!("could not run {p}: {e}"))
 }
 async fn fetch_identity(path: &str) -> Result<Value, String> {
@@ -725,6 +779,12 @@ async fn status() -> ExitCode {
 }
 async fn doctor() -> ExitCode {
     let mut failures = vec![];
+    if !executable_on_path("grok") {
+        failures.push("Grok Build executable `grok` is not available on PATH".into());
+    }
+    if !executable_on_path("codex") {
+        failures.push("Codex CLI executable `codex` is not available on PATH".into());
+    }
     let config = config_path(None);
     match (&config, load_manifest(&manifest_path().unwrap_or_default())) {
         (Ok(p), Ok(Some(m))) => match fs::read(p) {
@@ -810,6 +870,33 @@ mod tests {
         setup_at(p.clone(), mp.clone(), false).unwrap();
         assert_eq!(fs::read(&p).unwrap(), once);
         assert_eq!(fs::read(&mp).unwrap(), manifest_once);
+    }
+
+    #[test]
+    fn setup_reconciles_semantically_intact_blocks_after_markers_are_stripped() {
+        let d = temp();
+        let p = d.join("config.toml");
+        let mp = d.join("ownership.json");
+        setup_at(p.clone(), mp.clone(), false).unwrap();
+        let mut manifest = load_manifest(&mp).unwrap().unwrap();
+        manifest.service = Some(OwnedFile {
+            path: d.join("service"),
+            digest: "preserved".into(),
+        });
+        write_manifest(&mp, &manifest).unwrap();
+        let plain = b"[models.codex-sol]\nname = \"codex-sol\"\nmodel = \"gpt-5.6-sol\"\nbase_url = \"http://127.0.0.1:18474/v1\"\napi_key = \"local\"\n\n[models.codex-terra]\nname = \"codex-terra\"\nmodel = \"gpt-5.6-terra\"\nbase_url = \"http://127.0.0.1:18474/v1\"\napi_key = \"local\"\n";
+        fs::write(&p, plain).unwrap();
+
+        let dry = setup_at(p.clone(), mp.clone(), true).unwrap();
+        assert!(dry.contains("relinquish ownership of 2"));
+        assert_eq!(load_manifest(&mp).unwrap().unwrap().blocks.len(), 2);
+
+        let result = setup_at(p.clone(), mp.clone(), false).unwrap();
+        assert!(result.contains("preserved 2 model block(s) as user-owned"));
+        assert_eq!(fs::read(&p).unwrap(), plain);
+        let reconciled = load_manifest(&mp).unwrap().unwrap();
+        assert!(reconciled.blocks.is_empty());
+        assert_eq!(reconciled.service.unwrap().digest, "preserved");
     }
 
     #[test]
