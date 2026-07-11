@@ -148,8 +148,13 @@ fn digest(b: &[u8]) -> String {
     format!("{:x}", Sha256::digest(b))
 }
 fn block(name: &str, model: &str) -> String {
+    let display_name = if name == SOL {
+        "Codex Sol"
+    } else {
+        "Codex Terra"
+    };
     format!(
-        "{BEGIN}{name}\n[models.{name}]\nname = \"{name}\"\nmodel = \"{model}\"\nbase_url = \"http://127.0.0.1:{DEFAULT_PORT}/v1\"\napi_key = \"local\"\n{END}{name}\n"
+        "{BEGIN}{name}\n[model.{name}]\nmodel = \"{model}\"\nbase_url = \"http://127.0.0.1:{DEFAULT_PORT}/v1\"\nname = \"{display_name}\"\ndescription = \"GPT-5.6 via ChatGPT/Codex subscription\"\napi_backend = \"responses\"\napi_key = \"unused\"\ncontext_window = 372000\nstream_tool_calls = true\nsupports_reasoning_effort = true\nreasoning_efforts = [\"none\", \"low\", \"medium\", \"high\", \"xhigh\", \"max\"]\n{END}{name}\n"
     )
 }
 fn expected(name: &str) -> (&'static str, String) {
@@ -162,7 +167,7 @@ fn expected(name: &str) -> (&'static str, String) {
         format!("http://127.0.0.1:{DEFAULT_PORT}/v1"),
     )
 }
-fn validate_model(name: &str, v: &toml::Value) -> Result<(), String> {
+fn validate_legacy_model(name: &str, v: &toml::Value) -> Result<(), String> {
     let (model, url) = expected(name);
     let checks = [
         ("name", name),
@@ -173,7 +178,24 @@ fn validate_model(name: &str, v: &toml::Value) -> Result<(), String> {
     for (field, want) in checks {
         if v.get(field).and_then(toml::Value::as_str) != Some(want) {
             return Err(format!(
-                "conflicting [models.{name}]: expected {field} = {want:?}"
+                "conflicting legacy [models.{name}]: expected {field} = {want:?}"
+            ));
+        }
+    }
+    Ok(())
+}
+fn validate_custom_model(name: &str, v: &toml::Value) -> Result<(), String> {
+    let (model, url) = expected(name);
+    let checks = [
+        ("model", model),
+        ("base_url", url.as_str()),
+        ("api_backend", "responses"),
+        ("api_key", "unused"),
+    ];
+    for (field, want) in checks {
+        if v.get(field).and_then(toml::Value::as_str) != Some(want) {
+            return Err(format!(
+                "conflicting [model.{name}]: expected {field} = {want:?}"
             ));
         }
     }
@@ -244,9 +266,17 @@ fn setup_at(path: PathBuf, mp: PathBuf, dry: bool) -> Result<String, String> {
     } else {
         toml::from_str(text).map_err(|e| format!("invalid TOML: {e}"))?
     };
-    let models = doc.get("models").and_then(toml::Value::as_table);
-    if models.and_then(|m| m.get(LUNA)).is_some() {
+    let legacy_models = doc.get("models").and_then(toml::Value::as_table);
+    let custom_models = doc.get("model").and_then(toml::Value::as_table);
+    if legacy_models.and_then(|models| models.get(LUNA)).is_some()
+        || custom_models.and_then(|models| models.get(LUNA)).is_some()
+    {
         return Err("Luna is explicitly unsupported".into());
+    }
+    for name in [SOL, TERRA] {
+        if let Some(value) = legacy_models.and_then(|models| models.get(name)) {
+            validate_legacy_model(name, value)?;
+        }
     }
     let mut manifest = load_manifest(&mp)?.unwrap_or(Manifest {
         version: 1,
@@ -263,16 +293,24 @@ fn setup_at(path: PathBuf, mp: PathBuf, dry: bool) -> Result<String, String> {
         }
     }
     let mut relinquished = 0;
+    let mut migrate = vec![];
     manifest.blocks.retain(|owned| {
         let exact = old
             .windows(owned.bytes.len())
             .filter(|window| *window == owned.bytes.as_bytes())
             .count();
-        let semantically_intact = exact == 0
-            && models
-                .and_then(|entries| entries.get(&owned.name))
-                .is_some_and(|value| validate_model(&owned.name, value).is_ok());
-        if semantically_intact {
+        let legacy_owned = owned.bytes.contains(&format!("[models.{}]", owned.name));
+        let legacy_intact = legacy_models
+            .and_then(|entries| entries.get(&owned.name))
+            .is_some_and(|value| validate_legacy_model(&owned.name, value).is_ok());
+        if exact == 1 && legacy_owned && legacy_intact {
+            migrate.push(owned.clone());
+            return false;
+        }
+        let custom_intact = custom_models
+            .and_then(|entries| entries.get(&owned.name))
+            .is_some_and(|value| validate_custom_model(&owned.name, value).is_ok());
+        if exact == 0 && (legacy_intact || custom_intact) {
             relinquished += 1;
             false
         } else {
@@ -282,8 +320,8 @@ fn setup_at(path: PathBuf, mp: PathBuf, dry: bool) -> Result<String, String> {
     verify_manifest(&manifest, &path, &old)?;
     let mut add = vec![];
     for (name, model) in [(SOL, "gpt-5.6-sol"), (TERRA, "gpt-5.6-terra")] {
-        if let Some(v) = models.and_then(|m| m.get(name)) {
-            validate_model(name, v)?
+        if let Some(value) = custom_models.and_then(|models| models.get(name)) {
+            validate_custom_model(name, value)?
         } else {
             let bytes = block(name, model);
             add.push(OwnedBlock {
@@ -293,7 +331,7 @@ fn setup_at(path: PathBuf, mp: PathBuf, dry: bool) -> Result<String, String> {
             })
         }
     }
-    if add.is_empty() {
+    if add.is_empty() && migrate.is_empty() {
         if relinquished == 0 {
             return Ok("already configured; ownership verified".into());
         }
@@ -314,6 +352,13 @@ fn setup_at(path: PathBuf, mp: PathBuf, dry: bool) -> Result<String, String> {
         ));
     }
     let mut next = old.clone();
+    for legacy in &migrate {
+        let at = next
+            .windows(legacy.bytes.len())
+            .position(|window| window == legacy.bytes.as_bytes())
+            .ok_or("owned legacy model block disappeared during migration")?;
+        next.drain(at..at + legacy.bytes.len());
+    }
     if !next.is_empty() && !next.ends_with(b"\n") {
         next.push(b'\n')
     }
@@ -853,6 +898,11 @@ mod tests {
             service: None,
         }
     }
+    fn legacy_block(name: &str, model: &str) -> String {
+        format!(
+            "{BEGIN}{name}\n[models.{name}]\nname = \"{name}\"\nmodel = \"{model}\"\nbase_url = \"http://127.0.0.1:{DEFAULT_PORT}/v1\"\napi_key = \"local\"\n{END}{name}\n"
+        )
+    }
     #[test]
     fn setup_twice_preserves_config_and_dry_run_is_invariant() {
         let d = temp();
@@ -873,7 +923,37 @@ mod tests {
     }
 
     #[test]
-    fn setup_reconciles_semantically_intact_blocks_after_markers_are_stripped() {
+    fn setup_migrates_owned_legacy_schema_without_touching_unrelated_config() {
+        let d = temp();
+        let p = d.join("config.toml");
+        let mp = d.join("ownership.json");
+        let sol = legacy_block(SOL, "gpt-5.6-sol");
+        let terra = legacy_block(TERRA, "gpt-5.6-terra");
+        let old = format!("# keep me\n[ui]\nyolo = false\n\n{sol}\n{terra}\n");
+        fs::write(&p, &old).unwrap();
+        let owned = [(&sol, SOL), (&terra, TERRA)]
+            .into_iter()
+            .map(|(bytes, name)| OwnedBlock {
+                name: name.into(),
+                bytes: bytes.clone(),
+                digest: digest(bytes.as_bytes()),
+            })
+            .collect();
+        write_manifest(&mp, &manifest_for(&p, owned)).unwrap();
+
+        setup_at(p.clone(), mp.clone(), false).unwrap();
+        let migrated = fs::read_to_string(&p).unwrap();
+        assert!(migrated.contains("# keep me\n[ui]\nyolo = false"));
+        assert!(!migrated.contains("[models.codex-"));
+        assert!(migrated.contains("[model.codex-sol]"));
+        assert!(migrated.contains("[model.codex-terra]"));
+        let manifest = load_manifest(&mp).unwrap().unwrap();
+        assert_eq!(manifest.blocks.len(), 2);
+        verify_manifest(&manifest, &p, migrated.as_bytes()).unwrap();
+    }
+
+    #[test]
+    fn setup_preserves_unowned_legacy_blocks_and_adds_correct_custom_models() {
         let d = temp();
         let p = d.join("config.toml");
         let mp = d.join("ownership.json");
@@ -892,10 +972,15 @@ mod tests {
         assert_eq!(load_manifest(&mp).unwrap().unwrap().blocks.len(), 2);
 
         let result = setup_at(p.clone(), mp.clone(), false).unwrap();
-        assert!(result.contains("preserved 2 model block(s) as user-owned"));
-        assert_eq!(fs::read(&p).unwrap(), plain);
+        assert!(result.contains("configured"));
+        let configured = fs::read_to_string(&p).unwrap();
+        assert!(configured.starts_with(std::str::from_utf8(plain).unwrap()));
+        let document: toml::Value = toml::from_str(&configured).unwrap();
+        let models = document.get("model").unwrap();
+        validate_custom_model(SOL, models.get(SOL).unwrap()).unwrap();
+        validate_custom_model(TERRA, models.get(TERRA).unwrap()).unwrap();
         let reconciled = load_manifest(&mp).unwrap().unwrap();
-        assert!(reconciled.blocks.is_empty());
+        assert_eq!(reconciled.blocks.len(), 2);
         assert_eq!(reconciled.service.unwrap().digest, "preserved");
     }
 
@@ -940,7 +1025,11 @@ mod tests {
     #[test]
     fn semantic_conflicts_check_every_field() {
         let bad:toml::Value=toml::from_str("name='codex-sol'\nmodel='gpt-5.6-sol'\nbase_url='http://127.0.0.1:18474/v1'\napi_key='wrong'").unwrap();
-        assert!(validate_model(SOL, &bad).unwrap_err().contains("api_key"))
+        assert!(
+            validate_legacy_model(SOL, &bad)
+                .unwrap_err()
+                .contains("api_key")
+        )
     }
     #[test]
     fn manifest_rejects_changed_or_missing_blocks() {
