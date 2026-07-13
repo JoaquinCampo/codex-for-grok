@@ -43,7 +43,7 @@ jobs:
       - run: cargo test --all-targets --locked --target "${{ matrix.target }}"
       - run: cargo build --release --locked --target "${{ matrix.target }}"
       - run: release/archive.sh "$GITHUB_REF_NAME" "${{ matrix.target }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: release-${{ matrix.target }}
           path: release/dist/*.tar.gz

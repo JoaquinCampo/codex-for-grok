@@ -24,7 +24,7 @@ jobs:
         run: gh release download "v${{ inputs.version }}" --pattern SHA256SUMS --dir release/dist
       - run: release/render-homebrew.sh "${{ inputs.version }}"
       - run: ruby -c release/dist/codex-for-grok.rb
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: codex-for-grok-homebrew-formula-${{ inputs.version }}
           path: release/dist/codex-for-grok.rb
